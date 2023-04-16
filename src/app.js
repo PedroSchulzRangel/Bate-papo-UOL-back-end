@@ -91,10 +91,35 @@ try{
     await db.collection("messages").insertOne({from: user, to, text, type, time: dayjs().format("HH:mm:ss")});
 
     res.sendStatus(201);
-    
+
 } catch(error){
     res.status(500).send(error.message);
 }
+});
+
+app.post("/status", async (req, res) => {
+    
+    if(!req.headers){
+        return res.sendStatus(404);
+    }
+
+    const { user } = req.headers;
+
+    try{
+        const participantExists = await db.collection("participants").findOne({name: user});
+        if(!participantExists){
+            return res.sendStatus(404);
+        }
+
+        const updatedUser = {name: user, lastStatus: Date.now()};
+
+        await db.collection("participants").updateOne({name: user}, {$set: updatedUser});
+
+        res.sendStatus(200);
+        
+    } catch(error){
+        res.status(500).send(error.message);
+    }
 });
 const PORT = 5000;
 
