@@ -97,6 +97,49 @@ try{
 }
 });
 
+app.get("/messages", async (req, res) => {
+    
+    const { user } = req.headers;
+
+    const limit = parseInt(req.query.limit);
+
+    const userSchema = joi.object({
+        user: string().required()
+    });
+    const validation = userSchema.validate(req.headers);
+
+    try{
+        const participantExists = await db.collection("participants").findOne({name: user});
+
+        if(validation.error || !participantExists){
+            return res.sendStatus(422);
+        }
+
+        const messages = db.collection("messages").find(
+            {$or:
+                [{type: "message"},
+                {to: "Todos"},
+                {type: "private_message", to: user},
+                {type: "private_message", from: user}]})
+                .toArray();
+
+        if(limit === undefined || limit === null){
+            res.send(messages);
+        } else if(limit <= 0 || isNaN(limit)){
+            res.sendStatus(422);
+        } 
+        else if(messages.length <= limit){
+            res.send(messages);
+        } else {
+            const filteredMessages = messages.filter((m,index,array) => (index >= array.length - limit))
+            res.send(filteredMessages);
+        }
+    
+    } catch(error){
+        res.status(500).send(error.message);
+    }
+});
+
 app.post("/status", async (req, res) => {
     
     if(!req.headers){
